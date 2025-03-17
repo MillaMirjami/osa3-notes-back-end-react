@@ -1,0 +1,21 @@
+{
+  "name": "notes-back-end",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "echo \"Error: no test specified\"  && exit 1",
+    "build:ui": "rm -rf dist && cd ../../../osa2/01-oppimistehtavat/single-page-app && npm run build && cp -r dist ../../../osa3/01-oppimistehtavat/notes-back-end",
+    "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push"
+  },
+  "author": "Milla Sukki",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongodb": "^6.14.2",
+    "mongoose": "^8.12.1"
+  }
+}
