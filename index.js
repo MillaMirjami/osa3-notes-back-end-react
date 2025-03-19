@@ -10,36 +10,56 @@ app.use(express.static('dist'))
 
 const requestLogger = (request, response, next) => {
     console.log('Method:', request.method)
-    console.log('Status:', response.statusCode)
     console.log('Path', request.path)
     console.log('Body', request.body)
     console.log('---')
     next()
 }
-
 app.use(requestLogger)
 
-app.get('/api/notes', (request, response) => {
-    Note.find({}).then(notes => response.json(notes))
+
+app.get('/api/notes', (request, response, next) => {
+    Note.find({})
+    .then(notes => response.json(notes))
+    .catch(error => next(error))
 })
 
-app.get('/api/notes/:id', (request, response) => {
-    Note.findById(request.params.id).then(note => response.json(note))
-})
-
-app.delete('/api/notes/:id', (request, response) => {
-    Note.findByIdAndDelete(request.params.id).then(result => {
-        response.send('deletion succesfull')
+app.get('/api/notes/:id', (request, response, next) => {
+    Note.findById(request.params.id)
+    .then(note => {
+        if(note) {
+            response.json(note)
+        } else {
+            response.status(404).end()
+        }
     })
+    .catch(error => next(error))
 })
 
-app.put('/api/notes/:id', (request, response) => {
-    Note.findByIdAndUpdate(request.params.id, request.body).then(updatedNote => response.send(updatedNote))
+app.delete('/api/notes/:id', (request, response, next) => {
+    Note.findByIdAndDelete(request.params.id)
+    .then(result => response.status(204).end())
+    .catch(error => next(error))
 })
 
-app.post('/api/notes', (request, response) => {
+app.put('/api/notes/:id', (request, response, next) => {
+    const {content, important} = request.body
+    
+    Note.findByIdAndUpdate(request.params.id)
+    .then(updatedNote => {
+        if(!updatedNote) {
+            return response.status(404).end()
+        }
+        updatedNote.content = content
+        updatedNote.important = important
+        return updatedNote.save().then(updatedNote => response.json(updatedNote))
+    })
+    .catch(error => next(error))
+})
+
+app.post('/api/notes', (request, response, next) => {
     const body = request.body // middleware on jo muuttanut tässä json-merkkijonon js-olioksi eli note on js-olio.
-   
+    
     if(!body.content) {
         return response.status(400).json({error: "content missing"})
     }
@@ -48,11 +68,28 @@ app.post('/api/notes', (request, response) => {
         content: body.content,
         important: body.important || false
     }) 
-
-    note.save().then(savedNote => response.json(savedNote))
-     // .json muuttaa js-olion takaisin json-merkkijonoksi ja lähettää sen näin takaisin asiakkaalle.
+    
+    note.save()
+    .then(savedNote => response.json(savedNote))
+    .catch(error => next(error))
+    // .json muuttaa js-olion takaisin json-merkkijonoksi ja lähettää sen näin takaisin asiakkaalle.
 })
 
+const unknownEndpoint = (request, response) => {
+    response.status(404).send({error: 'unkown endpoint'})
+}
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+    
+    if(error.name === 'CastError') {
+        return response.status(400).send({error: 'malformatted id'})
+    }
+    
+    next(error)
+}
+app.use(errorHandler)
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
